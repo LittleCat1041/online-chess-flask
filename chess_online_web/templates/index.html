@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Online Chess</title>
+  <style>
+    :root {
+      --bg:#333; --fg:#eee; --light:#f0d9b5; --dark:#b58863; --accent:#38c172; --muted:#888;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--fg);
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px 12px 64px;
+      gap: 12px;
+    }
+    h1 { margin: 0 0 4px; font-weight: 700; }
+    #topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    #status {
+      font-size: 18px;
+      min-height: 24px;
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+    }
+    button {
+      margin: 4px;
+      padding: 10px 16px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.08);
+      color: var(--fg);
+    }
+    button:hover { background: rgba(255,255,255,0.14); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .board-wrap {
+      position: relative;
+      display: inline-block;
+    }
+    #board-container {
+      display: grid;
+      grid-template-columns: repeat(8, 60px);
+      grid-template-rows: repeat(8, 60px);
+      border: 2px solid #555;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+      margin: 12px auto;
+      border-radius: 8px;
+      transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    #board-container.my-turn {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(56, 193, 114, 0.35), 0 0 22px rgba(56,193,114,0.45);
+    }
+
+    .turn-badge {
+      position: absolute;
+      top: -14px;
+      right: 8px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: 0.2px;
+    }
+    .turn-badge.yours { background: rgba(56,193,114,0.15); border-color: rgba(56,193,114,0.45); }
+    .turn-dot {
+      display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:1px;
+      background: var(--muted);
+    }
+    .turn-badge.yours .turn-dot { background: var(--accent); }
+
+    .square {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .white-square { background-color: var(--light); }
+    .black-square { background-color: var(--dark); }
+    .square img {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    .selected {
+      outline: 3px solid #ffeb3b;
+      outline-offset: -3px;
+      background: rgba(255, 235, 59, 0.4);
+    }
+    .highlight {
+      background: rgba(76, 175, 80, 0.45);
+      box-shadow: inset 0 0 0 3px #4caf50;
+    }
+
+    @keyframes flash-red {
+      0%   { background: radial-gradient(circle, rgba(255,0,0,0.9) 40%, transparent 70%); }
+      50%  { background: radial-gradient(circle, rgba(255,0,0,0.3) 40%, transparent 70%); }
+      100% { background: radial-gradient(circle, rgba(255,0,0,0.9) 40%, transparent 70%); }
+    }
+    .in-check {
+      animation: flash-red 1s infinite;
+      box-shadow: 0 0 15px red !important;
+      border-radius: 5px;
+    }
+
+    #gameBanner {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.85);
+      color: white;
+      padding: 20px 40px;
+      border-radius: 12px;
+      font-size: 28px;
+      text-align: center;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+    }
+    #gameBanner.show {
+      display: block;
+      opacity: 1;
+    }
+
+    details {
+      width: min(640px, 95vw);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+    summary { cursor: pointer; font-weight: 600; }
+    code, pre { background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 6px; }
+    pre { padding: 8px 10px; overflow: auto; }
+    ol { margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Online Chess</h1>
+
+  <div id="topbar">
+    <div id="status">Connecting...</div>
+    <button id="requestNewGameBtn">Request New Game</button>
+    <button id="forfeitBtn">Forfeit</button>
+  </div>
+
+  <div class="board-wrap">
+    <div id="gameBanner"></div>
+    <div id="board-container"></div>
+    <div id="turnBadge" class="turn-badge">
+      <span class="turn-dot"></span><span id="turnText">Waiting…</span>
+    </div>
+  </div>
+
+  <div id="promotionModal" style="display:none; position:absolute; background:rgba(0,0,0,0.9); 
+      color:white; padding:10px; border-radius:10px; z-index:20; text-align:center; gap:8px;">
+    <img src="/static/images/wq.png" data-piece="q" style="width:50px; height:50px; cursor:pointer;">
+    <img src="/static/images/wr.png" data-piece="r" style="width:50px; height:50px; cursor:pointer;">
+    <img src="/static/images/wb.png" data-piece="b" style="width:50px; height:50px; cursor:pointer;">
+    <img src="/static/images/wn.png" data-piece="n" style="width:50px; height:50px; cursor:pointer;">
+  </div>
+
+
+  <details>
+    <summary>Play online with a friend (Ngrok)</summary>
+    <ol>
+      <li>Install Ngrok and log in at ngrok.com (get your auth token).</li>
+      <li>Authenticate once:
+        <pre><code>ngrok config add-authtoken &lt;YOUR_TOKEN&gt;</code></pre>
+      </li>
+      <li>Run your server:
+        <pre><code>python app.py</code></pre>
+      </li>
+      <li>Expose it:
+        <pre><code>ngrok http 5000</code></pre>
+      </li>
+      <li>Share the <em>Forwarding</em> URL (e.g. <code>https://abcd1234.ngrok.io</code>) with your friend.</li>
+    </ol>
+  </details>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
+
+  <script>
+    const socket = io();
+    const boardContainer = document.getElementById("board-container");
+    const statusElement = document.getElementById("status");
+    const turnBadge = document.getElementById("turnBadge");
+    const turnText = document.getElementById("turnText");
+    const forfeitBtn = document.getElementById("forfeitBtn");
+    const requestNewGameBtn = document.getElementById("requestNewGameBtn");
+
+    let myColor = "";
+    let selectedSquare = null;
+    let game = null;
+
+    const pieceMap = {
+      wp: "wp.png", wn: "wn.png", wb: "wb.png", wr: "wr.png", wq: "wq.png", wk: "wk.png",
+      bp: "bp.png", bn: "bn.png", bb: "bb.png", br: "br.png", bq: "bq.png", bk: "bk.png",
+    };
+
+    function setTurnHighlight(turnLetter) {
+      const isMyTurn = (myColor === "white" && turnLetter === "w") ||
+                      (myColor === "black" && turnLetter === "b");
+      boardContainer.classList.toggle("my-turn", isMyTurn);
+      turnBadge.classList.toggle("yours", isMyTurn);
+      turnText.textContent = isMyTurn ? "Your move" : "Opponent's move";
+      showBanner(isMyTurn ? "Your move" : "Opponent's move", 1500);
+    }
+
+    function createBoard() {
+      boardContainer.innerHTML = "";
+      const squareOrder = myColor === "white"
+        ? Array.from({ length: 64 }, (_, i) => i)
+        : Array.from({ length: 64 }, (_, i) => 63 - i);
+
+      squareOrder.forEach((i) => {
+        const square = document.createElement("div");
+        const row = 7 - Math.floor(i / 8);
+        const col = i % 8;
+        const algebraic = String.fromCharCode(97 + col) + (row + 1);
+        square.classList.add("square");
+        square.classList.add((row + col) % 2 === 0 ? "white-square" : "black-square");
+        square.id = algebraic;
+        square.addEventListener("click", () => handleSquareClick(algebraic));
+        boardContainer.appendChild(square);
+      });
+    }
+
+    function updateBoard(fen) {
+      if (!game) return;
+      if (fen && fen !== game.fen()) game.load(fen);
+
+      const boardState = game.board();
+      document.querySelectorAll(".square").forEach(sq => {
+        sq.innerHTML = "";
+        sq.classList.remove("in-check");
+      });
+
+      let whiteKingSquare = null, blackKingSquare = null;
+      for (let row=0; row<8; row++) {
+        for (let col=0; col<8; col++) {
+          const piece = boardState[row][col];
+          if (!piece) continue;
+          const algebraic = String.fromCharCode(97 + col) + (8 - row);
+          const squareEl = document.getElementById(algebraic);
+          const pieceKey = piece.color + piece.type.toLowerCase();
+          const imageName = pieceMap[pieceKey];
+          if (squareEl && imageName) {
+            const img = document.createElement("img");
+            img.src = `/static/images/${imageName}`;
+            squareEl.appendChild(img);
+          }
+          if (piece.type === "k") {
+            if (piece.color === "w") whiteKingSquare = algebraic;
+            else blackKingSquare = algebraic;
+          }
+        }
+      }
+
+      if (game.in_check && game.in_check()) {
+        const kingEl = document.getElementById(game.turn()==="w" ? whiteKingSquare : blackKingSquare);
+        if (kingEl) kingEl.classList.add("in-check");
+      }
+    }
+
+   function handleSquareClick(algebraic) {
+    if (!game || game.game_over()) return;
+
+    const square = document.getElementById(algebraic);
+
+    if (selectedSquare) {
+      const piece = game.get(selectedSquare);
+
+      const isMyPiece =
+        (piece.color === "w" && myColor === "white") ||
+        (piece.color === "b" && myColor === "black");
+      const isMyTurn =
+        (myColor === "white" && game.turn() === "w") ||
+        (myColor === "black" && game.turn() === "b");
+
+      if (!isMyPiece || !isMyTurn) {
+        clearSelection();
+        return;
+      }
+
+      const legalMoves = game.moves({ square: selectedSquare, verbose: true });
+      const thisMove = legalMoves.find(m => m.to === algebraic);
+
+      if (!thisMove) {
+        clearSelection();
+        return;
+      }
+
+      if (thisMove.promotion) {
+        showPromotionModal(selectedSquare, algebraic, piece.color);
+      } 
+      else {
+        //ตรวจสอบเบื้องต้นเพื่อให้ UI ตอบสนองได้ทันที (ไม่ต้องรอ Server ตอบกลับ)
+        if (game.move({ from: selectedSquare, to: algebraic })) {
+          socket.emit("move", { move: selectedSquare + algebraic });
+        }
+        clearSelection();
+      }
+
+    } else {
+      const piece = game.get(algebraic);
+      if (piece &&
+          ((piece.color === "w" && myColor === "white") ||
+          (piece.color === "b" && myColor === "black")) &&
+          ((myColor === "white" && game.turn() === "w") ||
+          (myColor === "black" && game.turn() === "b"))) {
+        selectedSquare = algebraic;
+        square.classList.add("selected");
+        game.moves({ square: selectedSquare, verbose: true })
+            .forEach(m => document.getElementById(m.to)?.classList.add("highlight"));
+      }
+    }
+  }
+
+    function showPromotionModal(from, to, color) {
+      const modal = document.getElementById("promotionModal");
+      const squareEl = document.getElementById(from);
+
+      const rect = squareEl.getBoundingClientRect();
+      let top = rect.top - modal.offsetHeight - 6;
+      let left = rect.left;
+      const padding = 8;
+      if (top < 0) top = rect.bottom + 6;
+      if (left + modal.offsetWidth > window.innerWidth) left = window.innerWidth - modal.offsetWidth - padding;
+
+      modal.style.top = top + "px";
+      modal.style.left = left + "px";
+
+      const isWhite = color === "w";
+      modal.style.background = isWhite ? "rgba(0,0,0,0.9)" : "rgba(240,240,240,0.95)";
+      modal.style.color = isWhite ? "white" : "black";
+      modal.querySelectorAll("img").forEach(img => {
+        const pieceCode = img.dataset.piece;
+        img.src = `/static/images/${isWhite ? "w" : "b"}${pieceCode}.png`;
+        img.onclick = () => {
+          const promotionPiece = img.dataset.piece;
+          if (game.move({ from, to, promotion: promotionPiece })) {
+            socket.emit("move", { move: from + to + promotionPiece });
+          }
+          modal.style.display = "none";
+          clearSelection();
+        };
+      });
+
+      modal.style.display = "flex";
+    }
+
+    function clearSelection() {
+      document.querySelectorAll(".highlight").forEach(el => el.classList.remove("highlight"));
+      document.querySelectorAll(".selected").forEach(el => el.classList.remove("selected"));
+      selectedSquare = null;
+    }
+
+    function showBanner(message, duration=2000){
+      const banner = document.getElementById("gameBanner");
+      banner.textContent = message;
+      banner.classList.add("show");
+      setTimeout(() => {
+        banner.classList.remove("show");
+        setTimeout(() => banner.style.display="none", 500);
+      }, duration);
+    }
+
+    socket.on("player_assigned", (data) => {
+      myColor = data.color;
+      statusElement.textContent = `You are ${myColor.charAt(0).toUpperCase()+myColor.slice(1)}.`;
+      createBoard();
+    });
+
+    socket.on("game_start", (data) => {
+      game = new Chess(data.fen);
+      updateBoard(data.fen);
+      statusElement.textContent = `Game started! ${data.turn==="w"?"White":"Black"} moves first.`;
+      setTurnHighlight(data.turn);
+      forfeitBtn.disabled = false;
+    });
+
+    socket.on("board_update", (data) => {
+      updateBoard(data.fen);
+      statusElement.textContent = `It is ${data.turn==="w"?"White":"Black"}'s turn.`;
+      setTurnHighlight(data.turn);
+    });
+
+    socket.on("status", (data) => {
+      statusElement.textContent = data.message;
+    });
+
+    socket.on("waiting_for_opponent", () => {
+      statusElement.textContent = "A player requested a new game. Click 'Request New Game' to accept.";
+    });
+
+    socket.on("new_game_ready", (data) => {
+      game = new Chess(data.fen);
+      updateBoard(data.fen);
+      statusElement.textContent = "New game started! White moves first.";
+      setTurnHighlight("w");
+      forfeitBtn.disabled = false;
+    });
+
+    socket.on("game_over", (data) => {
+      let message = "";
+      if (data.result === "checkmate") {
+        message = data.winner === myColor ? "Checkmate! You win!" : "Checkmate! You lose!";
+      } else if (data.result === "stalemate") {
+        message = "Stalemate! It's a draw.";
+      } else if (data.result === "draw") {
+        message = "Draw! Game is over.";
+      } else if (data.result === "forfeit") {
+        message = data.winner === myColor ? "Opponent forfeited. You win!" : "You forfeited. You lose!";
+      }
+
+      showBanner(message, 2500);
+      boardContainer.classList.remove("my-turn");
+      turnBadge.classList.remove("yours");
+      turnText.textContent = "Game over";
+      statusElement.textContent = message;
+      game = null;
+      forfeitBtn.disabled = true;
+    });
+
+    requestNewGameBtn.addEventListener("click", () => socket.emit("request_new_game"));
+    forfeitBtn.addEventListener("click", () => {
+      if (confirm("Are you sure you want to forfeit the game?")) {
+        socket.emit("forfeit");
+      }
+    });
+  </script>
+</body>
+</html>
