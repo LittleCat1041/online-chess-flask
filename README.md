@@ -24,7 +24,9 @@ How to Run
     python app.py
     ```
 4.  Access the game
+   
     Local: Open `http://localhost:5000`
+    
     Online: Run `ngrok http 5000` and share the generated URL with a friend.
     
 Screenshot
