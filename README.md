@@ -27,5 +27,6 @@ How to Run
     Local: Open `http://localhost:5000`
     Online: Run `ngrok http 5000` and share the generated URL with a friend.
     
-Screenshots
+Screenshot
+
 <img width="1097" height="773" alt="image" src="https://github.com/user-attachments/assets/ea6f4f73-c1a0-4554-aa45-63054e8da497" />
