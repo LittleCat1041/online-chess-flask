@@ -12,7 +12,7 @@ Tech Stack
 How to Run
 1.  Clone the repository
     ```bash
-    git clone [https://github.com/LittleCat1041/online-chess-flask.git](https://github.com/LittleCat1041/online-chess-flask.git)
+    git clone https://github.com/LittleCat1041/online-chess-flask.git
     cd online-chess-flask
     ```
 2.  Install dependencies
