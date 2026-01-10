@@ -25,9 +25,9 @@ A real-time multiplayer chess web application built with Python Flask, Socket.IO
     ```
 4.  Access the game
    
-    Local: Open `http://localhost:5000`
+    * Local: Open `http://localhost:5000`
     
-    Online: Run `ngrok http 5000` and share the generated URL with a friend.
+    * Online: Run `ngrok http 5000` and share the generated URL with a friend.
     
 ## Screenshot
 
