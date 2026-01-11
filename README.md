@@ -17,6 +17,8 @@ A real-time multiplayer chess web application built with Python Flask, Socket.IO
 2.  Install dependencies
     ```bash
     cd online-chess-flask
+    ```
+    ```bash
     pip install -r requirements.txt
     ```
 3.  Start the server
