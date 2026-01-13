@@ -10,22 +10,22 @@ A real-time multiplayer chess web application built with Python Flask, Socket.IO
  - Python, Flask, Flask-Socket.IO, python-chess, Chess.js, HTML/CSS, JavaScript, Ngrok
 
 ## How to Run
-1.  Clone the Repository
+1.  **Clone the Repository**
     ```bash
     git clone https://github.com/LittleCat1041/online-chess-flask.git
     ```
-2.  Install Dependencies
+2.  **Install Dependencies**
     ```bash
     cd online-chess-flask
     ```
     ```bash
     pip install -r requirements.txt
     ```
-3.  Start the Application
+3.  **Start the Application**
     ```bash
     python app.py
     ```
-4.  Open in Browser
+4.  **Open in Browser**
    
     * Local: Open `http://localhost:5000`
     
